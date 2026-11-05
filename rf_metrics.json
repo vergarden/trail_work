@@ -1,0 +1,39 @@
+{
+  "seed": 42,
+  "n_rows": 3778,
+  "n_features": 2265,
+  "params": {
+    "n_estimators": 500,
+    "min_samples_leaf": 5,
+    "max_features": 0.1,
+    "max_depth": 20
+  },
+  "split_counts": {
+    "train": 3022,
+    "valid": 378,
+    "test": 378
+  },
+  "metrics": {
+    "train": {
+      "rmse": 0.45645362909356174,
+      "mae": 0.3449598472011663,
+      "r2": 0.8555129728328986
+    },
+    "valid": {
+      "rmse": 0.8385880616782599,
+      "mae": 0.6461247099763104,
+      "r2": 0.4846159126013124
+    },
+    "test": {
+      "rmse": 0.8745292998391715,
+      "mae": 0.6905273976710459,
+      "r2": 0.5171502747521972
+    }
+  },
+  "oob_r2": 0.6550120500121266,
+  "outputs": {
+    "model": "C:\\kf\\code\\trail_work\\rf_model.joblib",
+    "predictions": "C:\\kf\\code\\trail_work\\rf_predictions.csv",
+    "feature_importance": "C:\\kf\\code\\trail_work\\rf_feature_importance.csv"
+  }
+}

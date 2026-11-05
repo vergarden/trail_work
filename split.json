@@ -1,0 +1,68 @@
+{
+  "input": "C:\\kf\\code\\trail_work\\Lipophilicity_clean.csv",
+  "seed": 42,
+  "include_chirality": false,
+  "max_smiles_len": 1000,
+  "ratios": {
+    "train": 0.8,
+    "valid": 0.1,
+    "test": 0.1
+  },
+  "columns": {
+    "id": "CMPD_CHEMBLID",
+    "smiles": "canonical_smiles",
+    "target": "exp"
+  },
+  "n_rows": 3778,
+  "counts": {
+    "train": 3022,
+    "valid": 378,
+    "test": 378
+  },
+  "scaffold_counts": {
+    "train": 1460,
+    "valid": 376,
+    "test": 377
+  },
+  "acyclic_molecules": 5,
+  "checks": {
+    "smiles_overlap": {
+      "train-valid": 0,
+      "train-test": 0,
+      "valid-test": 0
+    },
+    "scaffold_overlap": {
+      "train-valid": 0,
+      "train-test": 0,
+      "valid-test": 0
+    },
+    "group_overlap": {
+      "train-valid": 0,
+      "train-test": 0,
+      "valid-test": 0
+    }
+  },
+  "label_stats": {
+    "train": {
+      "count": 3022,
+      "mean": 2.1655,
+      "std": 1.201,
+      "min": -1.5,
+      "max": 4.5
+    },
+    "valid": {
+      "count": 378,
+      "mean": 2.2579,
+      "std": 1.1697,
+      "min": -1.33,
+      "max": 4.49
+    },
+    "test": {
+      "count": 378,
+      "mean": 2.2517,
+      "std": 1.2602,
+      "min": -1.42,
+      "max": 4.4
+    }
+  }
+}
