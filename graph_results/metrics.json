@@ -1,0 +1,38 @@
+{
+  "model": "bond-aware message-passing regressor",
+  "seed": 42,
+  "input": "split.csv",
+  "split_sha256": "3bf142c14e75ab45f3a51c9b0739457df827c8080e65f3dfe8fc07749c995ffd",
+  "split_counts": {
+    "train": 3022,
+    "valid": 378,
+    "test": 378
+  },
+  "torch": "2.14.1+cu132",
+  "rdkit": "2026.03.1",
+  "cpu_threads": 1,
+  "width": 32,
+  "depth": 3,
+  "batch_size": 64,
+  "optimizer": "Adam",
+  "learning_rate": 0.001,
+  "loss": "standardized target MSE",
+  "target_train_mean": 2.165529489517212,
+  "target_train_std": 1.2008320093154907,
+  "max_epochs": 40,
+  "patience": 8,
+  "epochs_trained": 40,
+  "selection": "lowest validation RMSE",
+  "best_epoch": 38,
+  "valid": {
+    "rmse": 0.7981645914710823,
+    "mae": 0.60302015546729,
+    "r2": 0.5331057024179646
+  },
+  "test": {
+    "rmse": 0.8014566873671899,
+    "mae": 0.6365449172617109,
+    "r2": 0.5944696395109599
+  },
+  "checkpoint": "best.pt"
+}

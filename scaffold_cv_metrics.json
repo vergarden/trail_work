@@ -1,0 +1,89 @@
+{
+  "model": "hist_gbr",
+  "pipeline_source": "train_baseline.build_models",
+  "model_seed": 42,
+  "sklearn_version": "1.9.1",
+  "splitter": "GroupKFold(n_splits=5, shuffle=False)",
+  "fold_seed": null,
+  "population": "original train split only",
+  "rows": 3022,
+  "groups": 1462,
+  "acyclic_singletons": 2,
+  "excluded_split_counts": {
+    "valid": 378,
+    "test": 378
+  },
+  "overlap_with_excluded_groups": 0,
+  "rows_held_out_exactly_once": 3022,
+  "folds": [
+    {
+      "fold": 1,
+      "fit_rows": 2417,
+      "held_rows": 605,
+      "fit_groups": 1171,
+      "held_groups": 291,
+      "group_overlap": 0,
+      "rmse": 0.732178131240986,
+      "mae": 0.5617418110820579,
+      "r2": 0.6708334747151559
+    },
+    {
+      "fold": 2,
+      "fit_rows": 2417,
+      "held_rows": 605,
+      "fit_groups": 1169,
+      "held_groups": 293,
+      "group_overlap": 0,
+      "rmse": 0.6840762980307598,
+      "mae": 0.5209291957347313,
+      "r2": 0.6960243608046954
+    },
+    {
+      "fold": 3,
+      "fit_rows": 2418,
+      "held_rows": 604,
+      "fit_groups": 1170,
+      "held_groups": 292,
+      "group_overlap": 0,
+      "rmse": 0.7562316046660315,
+      "mae": 0.580878943431023,
+      "r2": 0.6250135710218528
+    },
+    {
+      "fold": 4,
+      "fit_rows": 2418,
+      "held_rows": 604,
+      "fit_groups": 1169,
+      "held_groups": 293,
+      "group_overlap": 0,
+      "rmse": 0.6885040812217846,
+      "mae": 0.5235673179341765,
+      "r2": 0.6418285580270775
+    },
+    {
+      "fold": 5,
+      "fit_rows": 2418,
+      "held_rows": 604,
+      "fit_groups": 1169,
+      "held_groups": 293,
+      "group_overlap": 0,
+      "rmse": 0.6424735833845882,
+      "mae": 0.5014990316937624,
+      "r2": 0.6367716720005516
+    }
+  ],
+  "unweighted_fold_summary": {
+    "rmse": {
+      "mean": 0.7006927397088301,
+      "sample_sd": 0.04441293475308871
+    },
+    "mae": {
+      "mean": 0.5377232599751502,
+      "sample_sd": 0.03253432731431313
+    },
+    "r2": {
+      "mean": 0.6540943273138666,
+      "sample_sd": 0.02887274075178988
+    }
+  }
+}

@@ -12,6 +12,7 @@
 - 2026.11.03：完成 `train_baseline.py`，跑通 Ridge、RandomForest、HistGradientBoosting 三个 baseline，最佳 scaffold test RMSE 为 0.7144。
 - 2026.11.03：记录“分子图像 + CNN”预测的探索想法，目前仅完成可行性分析，尚未实现。
 - 2026.11.04: 倒查数据集ing
+- 2026.11.06：怀疑数据集未清洗干净，或者泄露了？
 ---
 
 ## 2. 数据集检查与预处理
@@ -227,7 +228,7 @@ n_estimators = 500
 
 ### 5.1 当前状态
 
-目前完成的是**描述符/指纹 + 树模型**的 baseline，还没有实现图神经网络或图像模型。因此本节既记录已经采用的思路，也记录尚未实现的探索方向，避免把“想法”写成“结果”。
+已在同一骨架划分上比较描述符/指纹 baseline 与一个分子图回归模型。HistGradientBoosting 的验证集 RMSE 最低，用于外部数据检验。分子图像仍是可选的探索方向。
 
 ### 5.2 已参考的划分思路：MoleculeNet
 
@@ -239,9 +240,11 @@ n_estimators = 500
   - 80/10/10，seed=42；
   - 校验 canonical SMILES、骨架、group_key 三重零重叠。
 
-### 5.3 探索想法：把分子渲染成图像做预测（尚未实现）
+### 5.3 探索想法：把分子渲染成图像做预测（渲染和冻结嵌入已实现，CNN 微调未实现）
 
-这是一个**尚未实现**的探索方向，不作为当前 baseline 的结果。
+`render_images.py` 已实现固定参数的 RDKit 渲染；`image_embed.py` 已实现“冻结 ResNet18 → 512 维图像嵌入 → Ridge/RandomForest”的最小实验。CNN 微调和 ImageMol 尚未实现。
+
+冻结图像嵌入的结果在 8.4 节：test RMSE 约 1.14，明显不如 HistGBR 的 0.7144，因此当前只作为负结果/对照实验保留。
 
 基本流程：
 
@@ -303,11 +306,16 @@ png = drawer.GetDrawingText()
 
 因此，图像预测目前只作为后续可选的探索方向，没有写入任何实验结果。
 
-### 5.4 下一步的模型方向
+### 5.4 图模型对照
 
-1. **图神经网络**：GIN / MPNN 或简化的 D-MPNN，直接在原子-键图上传递消息；
-2. **图像模型**：先做 ResNet18 嵌入 + Ridge 的最小实验，再决定是否微调；
-3. **集成**：如果图像模型与树模型误差相关性低，可以尝试简单平均或 stacking。
+`train_graph.py` 从原子的元素、连接度、电荷等属性出发，沿化学键传递三轮消息，再汇总为分子预测。训练沿用 `split.csv`，用训练集标签的均值和标准差做标准化，按验证集 RMSE 保存权重。本次训练共 40 轮，采用第 38 轮的权重。
+
+| 模型 | 验证集 RMSE | 测试集 RMSE | 测试集 MAE | 测试集 R² |
+|---|---:|---:|---:|---:|
+| HistGradientBoosting | 0.7495 | 0.7144 | 0.5459 | 0.6777 |
+| 三层消息传递图模型 | 0.7982 | 0.8015 | 0.6365 | 0.5945 |
+
+在这次固定划分和参数下，HistGradientBoosting 的验证误差较低。运行 `python train_graph.py` 可复现图模型对照，训练设置、指标和权重分别见 `graph_results/metrics.json` 和 `graph_results/best.pt`。
 
 ---
 
@@ -323,6 +331,7 @@ png = drawer.GetDrawingText()
 - 把 `dataclean.py` 从顶层脚本重构为可复用函数，增加 `CleanResult` 和 CLI；
 - 实现 `split.py` 的 Bemis-Murcko 骨架划分、通用列名支持和泄漏检查；
 - 编写 `train_baseline.py`，完成 Ridge / RandomForest / HistGBR 的训练与评估；
+- Codex 补充了外部评估脚本、分组误差分析、训练集内五折骨架验证和图模型对照，运行记录见第 5、8、9 节。
 - 协助定位环境问题，例如 `libglib` 覆盖 `intl-8.dll` 导致 RDKit 绘图模块加载失败。
 
 ### 6.3 prompt 设计
@@ -431,14 +440,27 @@ group     train-valid/train-test/valid-test = 0/0/0
 - Ridge 最初使用 `StandardScaler` 时 test RMSE 异常大，原因是描述符重尾特征导致外推爆炸；改用只在训练集上 fit 的 `QuantileTransformer(uniform)` 后，Ridge 稳定在 test RMSE 0.838；
 - HistGBR 的 test RMSE 略低于 valid，但这只是单次 scaffold 划分的结果，不能据此认为 test 更容易；样本量较小，指标存在波动。
 
-### 8.3 当前主要问题
+### 8.3 训练集内五折验证与留出集误差
 
-- 只做了一次 80/10/10 划分，没有 5 折 scaffold 交叉验证，指标稳定性有限；
-- 模型超参数是固定值，没有系统调参；
-- 只使用 2D 描述符/指纹，没有图结构信息；
-- 没有误差分析（按骨架、分子量、logD 区间分组）；
-- 图像预测和图神经网络都还没有实现；
-- 还没有 `test.csv` 推理接口和最终报告生成脚本。
+运行 `python scaffold_cv.py` 可复现固定参数 HistGradientBoosting 的五折骨架交叉验证。只使用原训练集的 3022 个分子，每个分子恰好留出一次，各折的拟合组和留出组之间共享的骨架组数均为 0。五折 RMSE 的均值和样本标准差为 **0.7007 ± 0.0444**，MAE 为 0.5377 ± 0.0325，R² 为 0.6541 ± 0.0289。逐折结果见 [scaffold_cv_metrics.json](scaffold_cv_metrics.json)。
+
+运行 `python analyze_errors.py` 可从已保存的预测复现[测试集误差报告](reports/baseline_errors/report.md)。在 378 个留出分子中，317 个的绝对误差不超过 1。实测 logD 低于 0 的 27 个分子平均被高估 1.03，实测值至少为 4 的 15 个分子平均被低估 0.75。每个测试骨架组只有一个分子，逐骨架表适合定位个例。
+
+### 8.4 图像嵌入对照（冻结 ResNet18）
+
+`render_images.py` 渲染 224×224 PNG，`image_embed.py` 用 ImageNet 预训练的 ResNet18 提取 512 维图像嵌入，再在训练集上拟合 Ridge/RandomForest。划分仍使用同一份 `split.csv`，未微调 CNN。
+
+| 图像模型 | valid RMSE | test RMSE | test MAE | test R² |
+|---|---:|---:|---:|---:|
+| Ridge（alpha=100） | 1.0895 | 1.1422 | 0.9177 | 0.1763 |
+| RandomForest | 1.0839 | 1.1469 | 0.9357 | 0.1695 |
+
+结论：
+
+- 仅使用 ImageNet 冻结图像嵌入时，test RMSE 约 1.14，明显差于 HistGBR 的 0.7144；
+- 图像特征在 3778 条数据上信号较弱，暂不值得继续投入微调 CNN；
+- 如果后续要做，优先尝试分子图像预训练模型（如 ImageMol），或把图像嵌入与描述符/指纹融合后再评估；
+- 当前图像路线只作为负结果/对照实验，不进入最终模型选择。
 
 ---
 
@@ -466,15 +488,36 @@ group     train-valid/train-test/valid-test = 0/0/0
 | `rf_predictions.csv` | RF 在全部样本上的预测 |
 | `rf_feature_importance.csv` | RF 特征重要性前 50 |
 | `rf_parity_test.png` / `rf_residuals_test.png` | RF 测试集 parity 图与残差图 |
+| `scaffold_cv.py` | 训练集内五折骨架交叉验证 |
+| `scaffold_cv_metrics.json` | 五折 CV 的逐折指标与均值/标准差 |
+| `train_graph.py` | 三层消息传递图模型对照 |
+| `graph_results/metrics.json` / `best.pt` | 图模型指标与最佳权重 |
+| `analyze_errors.py` | 从已保存预测生成测试集误差报告 |
+| `reports/baseline_errors/` | 误差报告、parity/残差图、逐骨架误差表 |
+| `predict.py` | 外部 `test.csv` 推理与检验报告 |
+| `render_images.py` | 按 split 把分子渲染成固定尺寸 PNG，并生成 manifest.csv |
+| `image_embed.py` | 冻结 ResNet18 提取图像嵌入，训练 Ridge/RandomForest 对照 |
 
 ### 9.2 运行顺序
 
 ```bash
 cd C:\kf\code\trail_work
 
-# 1. 创建环境（已有 myenv 可跳过）
+# 1. 创建核心环境（已有可用 myenv 可跳过）
+# env.yml 同时使用 conda-forge 和 defaults；strict channel priority 下会无解
+$env:CONDA_CHANNEL_PRIORITY="flexible"
 conda env create -f env.yml
 conda activate myenv
+# 如果 conda 提示 defaults 的 Terms of Service，按提示执行 conda tos accept
+
+# 如果机器上已有旧的 broken myenv，先改名或使用 -p 指定新路径：
+# conda env create -f env.yml -p E:\kf\envs\myenv-new
+
+# 可选：analyze_errors.py 的误差报告需要 matplotlib
+pip install matplotlib==3.11.2
+
+# 可选：图模型/图像实验才需要 torch
+pip install torch==2.14.1+cu132 torchvision==0.29.1+cu132 --index-url https://download.pytorch.org/whl/cu132
 
 # 2. 数据清洗
 python dataclean.py
@@ -490,6 +533,27 @@ python train_baseline.py
 
 # 6. RandomForest 专项（可选）
 python train_rf.py
+
+# 7. 训练集内五折骨架交叉验证
+python scaffold_cv.py
+
+# 8. 图模型对照
+python train_graph.py
+
+# 9. 测试集误差分析
+python analyze_errors.py
+
+# 10. 图像渲染（可选）
+python render_images.py
+
+# 11. 图像嵌入对照（可选，需先渲染）
+python image_embed.py --images-dir images
+```
+
+外部 `test.csv` 到位后：
+
+```bash
+python predict.py --input test.csv --model baseline_best.joblib --out reports/external-01
 ```
 
 ### 9.3 当前输出
@@ -498,37 +562,39 @@ python train_rf.py
 - `split.py` → `split.csv`、`split.json`
 - `features.py` → `features.npz`
 - `train_baseline.py` → `baseline_metrics.json`、`baseline_best.joblib`、`baseline_predictions.csv`
+- `train_rf.py` → `rf_metrics.json`、`rf_model.joblib`、`rf_predictions.csv`、特征重要性和两张图
+- `scaffold_cv.py` → `scaffold_cv_metrics.json`
+- `train_graph.py` → `graph_results/metrics.json`、`graph_results/best.pt`
+- `analyze_errors.py` → `reports/baseline_errors/`
+- `predict.py` → `reports/external-01/`（需要 `--input test.csv`）
+- `render_images.py` → `images/{train,valid,test}/*.png`、`images/manifest.csv`
+- `image_embed.py` → `image_embeddings.npz`、`image_metrics.json`、`image_predictions.csv`、`image_best.joblib`
 
 ### 9.4 test.csv 推理接口
 
-**目前尚未实现。**
-
-任务要求提供一个脚本，在拿到带标签的 `test.csv` 后完成推理、与真实标签对比并输出检验报告。当前代码只完成了训练侧流程，还没有 `predict.py`。
-
-计划中的接口：
+在项目目录激活 `myenv`，将外部 CSV 的路径传给 `--input`。需要三列 `CMPD_CHEMBLID,exp,smiles`。为每次检验指定一个新的报告目录。
 
 ```bash
-python predict.py --input test.csv --model baseline_best.joblib --out reports/
+python predict.py --input test.csv --model baseline_best.joblib --out reports/external-01
 ```
 
-需要保证：
+脚本按训练规则检查并规范化 SMILES，复用 `features.py` 计算特征，对照 `features.npz` 中的列名和顺序后调用已训练的模型。推理保留输入行序和重复记录。能解析的分子即使缺少有效标签也会得到预测。指标只使用同时有预测且 `exp` 在 `[-10, 10]` 内的行；`999999` 这类异常标签会写入 `issues.csv` 的 `label_issue`，不会进入 RMSE/MAE/R²，也不会撑爆残差图。
 
-- 复用 `features.py` 的特征逻辑，训练和推理特征列完全一致；
-- 不重新拟合任何预处理，直接使用模型内的 imputer / transformer；
-- 对非法/缺失 SMILES 不崩溃，单独记录；
-- 输出预测结果、RMSE/MAE/R²、失败行和误差最大的样本。
+| 报告文件 | 内容 |
+|---|---|
+| `predictions.csv` | 所有输入记录、原始标签、预测、绝对误差和问题原因 |
+| `issues.csv` | 结构、特征或标签有问题的记录，保留输入记录号 |
+| `metrics.json` | 输入、预测、计分行数及 RMSE、MAE、R²。无法计算的指标记为 `null` |
+| `largest_errors.csv` | 可计分记录中绝对误差最大的 10 条，少于 10 条时列出全部 |
+| `residuals.png` | 有有效标签时输出：预测值 vs 残差（pred - true），横线为 0；无标签时跳过 |
+
+接口验证使用原项目 378 个留出分子。新脚本的 378 个预测与已保存的预测逐项相同，RMSE 为 0.7144。外部集的性能需等实际 `test.csv` 到位后另行计算。
 
 ---
 
-## 10. 当前未完成 / 下一步
+## 10. 交付进度
 
-1. **`predict.py`**：完成 `test.csv` 推理与报告生成（交付要求）；
-2. **误差分析**：parity plot、残差分布、按骨架/分子量/logD 区间分组；
-3. **5 折 scaffold 交叉验证**：给 baseline 一个均值 ± 标准差，而不是单次划分；
-4. **改进模型**：GIN / MPNN 或简化的 D-MPNN，与 HistGBR 在同一 split 上对比；
-5. **图像预测实验（可选）**：先做 ResNet18 嵌入 + Ridge 的最小实验，再决定是否微调 CNN；
-6. **README 第 11 节手写承诺与签名**：必须由本人完成，不能由 AI 代写；
-7. 最终提交前检查 `env.yml`、模型文件、`test.csv` 推理脚本和复现命令。
+外部检验接口、误差分析、五折骨架交叉验证和图模型对照已完成；图像渲染和冻结 ResNet18 嵌入对照也已完成，但 CNN 微调/ImageMol 尚未实现。图像嵌入的 test RMSE 约 1.14，弱于 HistGBR 的 0.7144，因此只作为负结果保留。拿到正式 `test.csv` 后，按第 9.4 节生成外部检验报告。作者需在提交前核对实际代码、实验记录和环境，并亲自完成第 11 节的手写说明及承诺。
 
 ---
 
